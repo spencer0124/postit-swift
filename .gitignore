@@ -1,0 +1,37 @@
+# macOS 시스템 파일
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Trashes
+
+# Xcode 사용자 개인 설정
+# (창 위치, 브레이크포인트, 스킴 설정 등)
+*.xcuserdatad
+*.user(Interface)State.xcuserstate
+project.xcworkspace
+
+# Xcode 빌드 결과물
+Build/
+build/
+DerivedData/
+*.app
+*.ipa
+*.appex
+*.o
+*.lo
+*.la
+*.db
+
+# Swift Package Manager
+.build/
+Packages/
+*.xcodeproj
+*Package.pins
+Package.resolved
+
+# 테스트 결과물
+*.xctestrun
+*.xcresult
+
+
