@@ -17,29 +17,7 @@ class ActivePinsViewModel: ObservableObject {
     
     private var liveActivities: [UUID: Activity<PinActivityAttributes>] = [:]
     
-    // 앱 활성화 시 공유된 Pin 확인 로직 (변경됨)
-    func checkForSharedPin() {
-        if let sharedPinData = ShareDataManager.readAndClearPin() {
-            print("새로운 공유 Pin 발견! 처리 시작.")
-            Task {
-                // 1. ContentProcessorService로 먼저 처리
-                let result = await ContentProcessorService.processContent(sharedPinData.content)
-                switch result {
-                case .success(let processed):
-                    // 2. 처리 성공 시 Pin 추가 및 LA 시작
-                    if addPin(processedContent: processed) != nil {
-                        print("공유된 Pin 처리 및 고정 성공")
-                    } else {
-                        print("공유된 Pin 처리 후 LA 시작 실패")
-                        // TODO: 사용자에게 에러 알림
-                    }
-                case .failure(let error):
-                    print("공유된 Pin 처리 실패: \(error.localizedDescription)")
-                    // TODO: 사용자에게 에러 알림
-                }
-            }
-        }
-    }
+    
     
     // ProcessedContent를 받아서 Pin 추가 및 LA 시작 (핵심 함수)
     @discardableResult
