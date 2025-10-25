@@ -6,6 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C41FA5972EA63B6000E2301C /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C41FA5962EA63B6000E2301C /* WidgetKit.framework */; };
+		C41FA5992EA63B6000E2301C /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C41FA5982EA63B6000E2301C /* SwiftUI.framework */; };
+		C41FA5AA2EA63B6200E2301C /* PinLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C41FA5942EA63B6000E2301C /* PinLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		C4E307932EA667BD00F9975A /* PinShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = C4E307892EA667BD00F9975A /* PinShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		C41FA5602EA6368000E2301C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -21,17 +28,100 @@
 			remoteGlobalIDString = C41FA54E2EA6367F00E2301C;
 			remoteInfo = postit;
 		};
+		C41FA5A82EA63B6200E2301C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C41FA5472EA6367F00E2301C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C41FA5932EA63B6000E2301C;
+			remoteInfo = PinLiveActivityExtension;
+		};
+		C4E307912EA667BD00F9975A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C41FA5472EA6367F00E2301C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C4E307882EA667BD00F9975A;
+			remoteInfo = PinShareExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C41FA5AF2EA63B6200E2301C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C4E307932EA667BD00F9975A /* PinShareExtension.appex in Embed Foundation Extensions */,
+				C41FA5AA2EA63B6200E2301C /* PinLiveActivityExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		C41FA54F2EA6367F00E2301C /* postit.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = postit.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C41FA55F2EA6368000E2301C /* postitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = postitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C41FA5692EA6368000E2301C /* postitUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = postitUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C41FA5942EA63B6000E2301C /* PinLiveActivityExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PinLiveActivityExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		C41FA5962EA63B6000E2301C /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		C41FA5982EA63B6000E2301C /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		C4E307892EA667BD00F9975A /* PinShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PinShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C41FA5AB2EA63B6200E2301C /* Exceptions for "PinLiveActivity" folder in "PinLiveActivityExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C41FA5932EA63B6000E2301C /* PinLiveActivityExtension */;
+		};
+		C41FA5B42EA63C5B00E2301C /* Exceptions for "postit" folder in "PinLiveActivityExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				model/Pin.swift,
+				PinActivityAttribute.swift,
+				PinContentView.swift,
+			);
+			target = C41FA5932EA63B6000E2301C /* PinLiveActivityExtension */;
+		};
+		C4E307962EA667BD00F9975A /* Exceptions for "PinShareExtension" folder in "PinShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C4E307882EA667BD00F9975A /* PinShareExtension */;
+		};
+		C4E3079D2EA6695E00F9975A /* Exceptions for "postit" folder in "PinShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				contentprocessing/ProcessedContent.swift,
+				LiveActivityService.swift,
+				MetadataService.swift,
+				model/Pin.swift,
+				PinActivityAttribute.swift,
+				SharedPin.swift,
+			);
+			target = C4E307882EA667BD00F9975A /* PinShareExtension */;
+		};
+		C4E307A62EA67D3900F9975A /* Exceptions for "postit" folder in "postit" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C41FA54E2EA6367F00E2301C /* postit */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C41FA5512EA6367F00E2301C /* postit */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C4E307A62EA67D3900F9975A /* Exceptions for "postit" folder in "postit" target */,
+				C41FA5B42EA63C5B00E2301C /* Exceptions for "postit" folder in "PinLiveActivityExtension" target */,
+				C4E3079D2EA6695E00F9975A /* Exceptions for "postit" folder in "PinShareExtension" target */,
+			);
 			path = postit;
 			sourceTree = "<group>";
 		};
@@ -43,6 +133,22 @@
 		C41FA56C2EA6368000E2301C /* postitUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = postitUITests;
+			sourceTree = "<group>";
+		};
+		C41FA59A2EA63B6000E2301C /* PinLiveActivity */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C41FA5AB2EA63B6200E2301C /* Exceptions for "PinLiveActivity" folder in "PinLiveActivityExtension" target */,
+			);
+			path = PinLiveActivity;
+			sourceTree = "<group>";
+		};
+		C4E3078A2EA667BD00F9975A /* PinShareExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C4E307962EA667BD00F9975A /* Exceptions for "PinShareExtension" folder in "PinShareExtension" target */,
+			);
+			path = PinShareExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -69,6 +175,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C41FA5912EA63B6000E2301C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C41FA5992EA63B6000E2301C /* SwiftUI.framework in Frameworks */,
+				C41FA5972EA63B6000E2301C /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4E307862EA667BD00F9975A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +200,9 @@
 				C41FA5512EA6367F00E2301C /* postit */,
 				C41FA5622EA6368000E2301C /* postitTests */,
 				C41FA56C2EA6368000E2301C /* postitUITests */,
+				C41FA59A2EA63B6000E2301C /* PinLiveActivity */,
+				C4E3078A2EA667BD00F9975A /* PinShareExtension */,
+				C41FA5952EA63B6000E2301C /* Frameworks */,
 				C41FA5502EA6367F00E2301C /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,8 +213,19 @@
 				C41FA54F2EA6367F00E2301C /* postit.app */,
 				C41FA55F2EA6368000E2301C /* postitTests.xctest */,
 				C41FA5692EA6368000E2301C /* postitUITests.xctest */,
+				C41FA5942EA63B6000E2301C /* PinLiveActivityExtension.appex */,
+				C4E307892EA667BD00F9975A /* PinShareExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C41FA5952EA63B6000E2301C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				C41FA5962EA63B6000E2301C /* WidgetKit.framework */,
+				C41FA5982EA63B6000E2301C /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -102,10 +238,13 @@
 				C41FA54B2EA6367F00E2301C /* Sources */,
 				C41FA54C2EA6367F00E2301C /* Frameworks */,
 				C41FA54D2EA6367F00E2301C /* Resources */,
+				C41FA5AF2EA63B6200E2301C /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				C41FA5A92EA63B6200E2301C /* PBXTargetDependency */,
+				C4E307922EA667BD00F9975A /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				C41FA5512EA6367F00E2301C /* postit */,
@@ -163,6 +302,50 @@
 			productReference = C41FA5692EA6368000E2301C /* postitUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		C41FA5932EA63B6000E2301C /* PinLiveActivityExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C41FA5AC2EA63B6200E2301C /* Build configuration list for PBXNativeTarget "PinLiveActivityExtension" */;
+			buildPhases = (
+				C41FA5902EA63B6000E2301C /* Sources */,
+				C41FA5912EA63B6000E2301C /* Frameworks */,
+				C41FA5922EA63B6000E2301C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C41FA59A2EA63B6000E2301C /* PinLiveActivity */,
+			);
+			name = PinLiveActivityExtension;
+			packageProductDependencies = (
+			);
+			productName = PinLiveActivityExtension;
+			productReference = C41FA5942EA63B6000E2301C /* PinLiveActivityExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C4E307882EA667BD00F9975A /* PinShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C4E307972EA667BD00F9975A /* Build configuration list for PBXNativeTarget "PinShareExtension" */;
+			buildPhases = (
+				C4E307852EA667BD00F9975A /* Sources */,
+				C4E307862EA667BD00F9975A /* Frameworks */,
+				C4E307872EA667BD00F9975A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C4E3078A2EA667BD00F9975A /* PinShareExtension */,
+			);
+			name = PinShareExtension;
+			packageProductDependencies = (
+			);
+			productName = PinShareExtension;
+			productReference = C4E307892EA667BD00F9975A /* PinShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -184,6 +367,12 @@
 						CreatedOnToolsVersion = 16.2;
 						TestTargetID = C41FA54E2EA6367F00E2301C;
 					};
+					C41FA5932EA63B6000E2301C = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					C4E307882EA667BD00F9975A = {
+						CreatedOnToolsVersion = 16.2;
+					};
 				};
 			};
 			buildConfigurationList = C41FA54A2EA6367F00E2301C /* Build configuration list for PBXProject "postit" */;
@@ -203,6 +392,8 @@
 				C41FA54E2EA6367F00E2301C /* postit */,
 				C41FA55E2EA6368000E2301C /* postitTests */,
 				C41FA5682EA6368000E2301C /* postitUITests */,
+				C41FA5932EA63B6000E2301C /* PinLiveActivityExtension */,
+				C4E307882EA667BD00F9975A /* PinShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +414,20 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		C41FA5672EA6368000E2301C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C41FA5922EA63B6000E2301C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4E307872EA667BD00F9975A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +458,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		C41FA5902EA63B6000E2301C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C4E307852EA667BD00F9975A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +484,16 @@
 			isa = PBXTargetDependency;
 			target = C41FA54E2EA6367F00E2301C /* postit */;
 			targetProxy = C41FA56A2EA6368000E2301C /* PBXContainerItemProxy */;
+		};
+		C41FA5A92EA63B6200E2301C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C41FA5932EA63B6000E2301C /* PinLiveActivityExtension */;
+			targetProxy = C41FA5A82EA63B6200E2301C /* PBXContainerItemProxy */;
+		};
+		C4E307922EA667BD00F9975A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C4E307882EA667BD00F9975A /* PinShareExtension */;
+			targetProxy = C4E307912EA667BD00F9975A /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -393,12 +622,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = postit/postit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"postit/Preview Content\"";
 				DEVELOPMENT_TEAM = 95HGXTX76L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = postit/Info.plist;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -422,12 +654,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = postit/postit.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"postit/Preview Content\"";
 				DEVELOPMENT_TEAM = 95HGXTX76L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = postit/Info.plist;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -518,6 +753,112 @@
 			};
 			name = Release;
 		};
+		C41FA5AD2EA63B6200E2301C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 95HGXTX76L;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PinLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PinLiveActivity;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = zoyoong.postit.PinLiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C41FA5AE2EA63B6200E2301C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 95HGXTX76L;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PinLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PinLiveActivity;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = zoyoong.postit.PinLiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		C4E307942EA667BD00F9975A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PinShareExtension/PinShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 95HGXTX76L;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PinShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PinShareExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = zoyoong.postit.PinShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C4E307952EA667BD00F9975A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = PinShareExtension/PinShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 95HGXTX76L;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PinShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = PinShareExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = zoyoong.postit.PinShareExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -553,6 +894,24 @@
 			buildConfigurations = (
 				C41FA57A2EA6368000E2301C /* Debug */,
 				C41FA57B2EA6368000E2301C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C41FA5AC2EA63B6200E2301C /* Build configuration list for PBXNativeTarget "PinLiveActivityExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C41FA5AD2EA63B6200E2301C /* Debug */,
+				C41FA5AE2EA63B6200E2301C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C4E307972EA667BD00F9975A /* Build configuration list for PBXNativeTarget "PinShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C4E307942EA667BD00F9975A /* Debug */,
+				C4E307952EA667BD00F9975A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
