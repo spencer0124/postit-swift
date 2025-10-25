@@ -10,120 +10,155 @@ class ActivePinsViewModel: ObservableObject {
     @Published var activePins: [Pin] = []
     @Published var isShowingEditor = false
 
+    // ⭐️ 1. LA 관리를 위해 [Pin.ID: Activity] 딕셔너리 사용
     private var liveActivities: [UUID: Activity<PinActivityAttributes>] = [:]
 
     // MARK: - Shared Pin Processing State
-    // SharedPinView가 관찰할 상태 변수들 추가
     @Published var sharedPinProcessingState: SharedPinProcessingState = .idle
-    @Published var processedContentForPreview: ProcessedContent? = nil // 미리보기용 처리 결과 저장
+    @Published var processedContentForPreview: ProcessedContent? = nil
 
-    // SharedPinView의 상태를 정의하는 Enum (기존 SharedPinView에서 가져옴)
     enum SharedPinProcessingState {
-        case idle // 초기 상태
-        case loading // 처리 중
-        case success // 성공
-        case error(String) // 실패 (에러 메시지 포함)
+        case idle, loading, success, error(String)
     }
 
-    // ProcessedContent를 받아서 Pin 추가 및 LA 시작 (핵심 함수)
+    // MARK: - Pin & Activity 관리 (핵심 로직)
+
     @discardableResult
     func addPin(processedContent: ProcessedContent) -> Activity<PinActivityAttributes>? {
         if activePins.contains(where: { $0.content == processedContent.originalContent }) {
-            return nil // 중복 방지
+            return nil
         }
 
         let newPin = Pin(
             content: processedContent.originalContent,
             pinType: processedContent.pinType
-
         )
         activePins.insert(newPin, at: 0)
 
-        // LA 시작 (처리된 메타데이터 포함)
         guard let activity = LiveActivityService.start(pin: newPin, processedContent: processedContent) else {
-            activePins.removeAll { $0.id == newPin.id } // 롤백
+            activePins.removeAll { $0.id == newPin.id }
             return nil
         }
 
+        // ⭐️ 2. 생성된 Activity를 핀의 ID와 함께 저장
         liveActivities[newPin.id] = activity
+        
+        // ⭐️ 3. LA가 종료되는지 감시 시작 (스와이프 등)
         Task { await listenForActivityEnd(activity: activity, pinID: newPin.id) }
 
         return activity
     }
 
-    // --- 직접 입력 시 호출될 함수 (수정됨) ---
-    // ContentProcessorService를 호출하도록 변경
     func addPinAndProcess(content: String) async -> Result<Activity<PinActivityAttributes>?, ContentProcessingError> {
-        // 1. 입력된 content 처리 시도
         let result = await ContentProcessorService.processContent(content)
 
         switch result {
         case .success(let processed):
-            // 2. 처리 성공 시 Pin 추가 및 LA 시작
             if let activity = addPin(processedContent: processed) {
-                return .success(activity) // 성공 시 Activity 반환
+                return .success(activity)
             } else {
-                return .failure(.liveActivityStartFailed) // LA 시작 실패
+                return .failure(.liveActivityStartFailed)
             }
         case .failure(let error):
-            // 처리 실패 시 에러 반환
             return .failure(error)
         }
     }
+    
+    // --- ⭐️ 4. [수정됨] 앱 (대시보드)에서 핀을 삭제할 때 호출되는 함수 ---
+    func removePin(at offsets: IndexSet) {
+        // 1. 삭제할 핀들을 가져옵니다.
+        let pinsToRemove = offsets.map { activePins[$0] }
+        
+        Task {
+            for pin in pinsToRemove {
+                // 2. 핀 ID로 추적 중인 Live Activity를 찾습니다.
+                guard let activity = liveActivities[pin.id] else {
+                    print("삭제할 핀(\(pin.id))에 해당하는 Live Activity를 찾을 수 없습니다.")
+                    // LA가 없더라도 앱에서는 삭제되어야 하므로 MainActor에서 UI 업데이트
+                    await MainActor.run {
+                        activePins.removeAll { $0.id == pin.id }
+                    }
+                    continue // 다음 핀으로
+                }
+                
+                // 3. 찾은 Live Activity를 즉시 종료시킵니다.
+                await activity.end(nil, dismissalPolicy: .immediate)
+                print("Live Activity \(activity.id)가 앱에서 종료되었습니다.")
+                
+                // 4. 앱 UI(activePins)와 추적 딕셔너리(liveActivities)에서 제거합니다.
+                //    (이 작업은 removePinFromApp에서도 호출되지만, 여기서 선제적으로 수행)
+                await MainActor.run {
+                    activePins.removeAll { $0.id == pin.id }
+                    liveActivities.removeValue(forKey: pin.id)
+                }
+            }
+        }
+    }
 
-    // --- Shared Pin 처리 로직 함수 추가 ---
-    // SharedPinView의 processAndPinContent 로직을 이 함수로 이동
+
+    // --- ⭐️ 5. [수정됨] LA가 시스템(스와이프 등)에 의해 종료되는 것을 감시하는 함수 ---
+    private func listenForActivityEnd(activity: Activity<PinActivityAttributes>, pinID: UUID) async {
+        // activityStateUpdates는 LA의 상태가 변경될 때마다 이벤트를 방출합니다.
+        for await state in activity.activityStateUpdates {
+            // 사용자가 스와이프 등으로 LA를 '종료'시켰는지 확인합니다.
+            if state == .dismissed {
+                print("Live Activity \(activity.id)가 시스템에서 종료(dismissed)되었습니다.")
+                // LA가 종료되었으므로, 앱의 대시보드에서도 핀을 제거하도록 호출합니다.
+                await removePinFromApp(id: pinID)
+            }
+        }
+        
+        // .dismissed 외에도 .ended (시간 초과 등) 상태에서도 정리가 필요할 수 있습니다.
+        // LA가 활성 상태가 아니게 되면(not .active) 무조건 정리합니다.
+        if activity.activityState != .active {
+             await removePinFromApp(id: pinID)
+        }
+    }
+
+    // --- ⭐️ 6. [수정됨] LA 종료에 따라 앱 내부 데이터를 정리하는 함수 ---
+    @MainActor
+    private func removePinFromApp(id: UUID) {
+        // 1. activePins 배열에서 해당 ID의 핀을 찾아 제거 (UI 업데이트)
+        //    (이미 앱에서 먼저 삭제되었을 수도 있으므로 firstIndex 사용)
+        if let index = activePins.firstIndex(where: { $0.id == id }) {
+            activePins.remove(at: index)
+            print("앱 대시보드에서 핀 \(id)를 제거했습니다.")
+        }
+        
+        // 2. liveActivities 딕셔너리에서도 해당 ID의 추적을 중지
+        if liveActivities.removeValue(forKey: id) != nil {
+             print("ViewModel에서 Activity \(id)의 추적을 중지합니다.")
+        }
+    }
+
+    // MARK: - Shared Pin 로직 (변경 없음)
+    
     func processAndPinSharedContent(_ content: String) async {
-        // 이미 처리 중이면 중복 실행 방지 (선택 사항)
-        // guard sharedPinProcessingState == .idle else { return }
-
-        sharedPinProcessingState = .loading // 로딩 상태 시작
-        processedContentForPreview = nil // 이전 미리보기 내용 초기화
-
-        // 1. ContentProcessorService 호출
+        sharedPinProcessingState = .loading
+        processedContentForPreview = nil
         let result = await ContentProcessorService.processContent(content)
 
         switch result {
         case .success(let processed):
-            // 2. 처리 성공 시, Pin 추가 및 LA 시작 (기존 addPin 호출)
             if addPin(processedContent: processed) != nil {
-                // 3. LA 시작 성공 시
-                self.processedContentForPreview = processed // 결과 저장 for 목업
-                // @MainActor 함수 내에서는 Main Thread 보장되므로 withAnimation 바로 사용 가능
+                self.processedContentForPreview = processed
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
-                    sharedPinProcessingState = .success // 성공 UI 표시
+                    sharedPinProcessingState = .success
                 }
-                // 햅틱 피드백은 View에서 처리하는 것이 더 적합할 수 있음 (선택 사항)
-                // UINotificationFeedbackGenerator().notificationOccurred(.success)
-
-                // 성공 상태를 잠시 보여준 후 자동으로 닫히게 하려면 여기에 Task.sleep 추가 가능
-                // try? await Task.sleep(nanoseconds: 3_000_000_000) // 3초 대기
-                // dismiss() // ViewModel에서는 dismiss 직접 호출 불가, View에서 처리해야 함
-
             } else {
-                // LA 시작 실패 시
                 withAnimation {
                     sharedPinProcessingState = .error(ContentProcessingError.liveActivityStartFailed.localizedDescription)
                 }
             }
-
         case .failure(let error):
-            // 처리 실패 시
             withAnimation {
                 sharedPinProcessingState = .error(error.localizedDescription)
             }
         }
     }
-
-    // SharedPinView가 닫힐 때 상태 초기화하는 함수 (선택 사항)
+    
     func resetSharedPinProcessingState() {
         sharedPinProcessingState = .idle
         processedContentForPreview = nil
     }
-
-
-    // --- 나머지 함수 (변경 없음) ---
-    private func listenForActivityEnd(activity: Activity<PinActivityAttributes>, pinID: UUID) async { /* ... */ }
-    @MainActor private func removePinFromApp(id: UUID) { /* ... */ }
-    func removePin(at offsets: IndexSet) { /* ... */ }
 }
