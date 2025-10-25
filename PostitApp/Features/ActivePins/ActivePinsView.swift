@@ -22,7 +22,7 @@ struct Tab1View: View {
                     List {
                         // 3. 인덱스와 핀을 함께 가져옵니다.
                         ForEach(Array(viewModel.activePins.enumerated()), id: \.element.id) { index, pin in
-                            // 4. 삭제 버튼이 포함된 커스텀 행(Row)을 사용합니다.
+                            // 4. 삭제 버튼과 타이머가 포함된 커스텀 행(Row)을 사용합니다.
                             PinListRow(pin: pin, onDelete: {
                                 viewModel.removePin(at: IndexSet(integer: index))
                             })
@@ -54,15 +54,39 @@ struct Tab1View: View {
 
 // MARK: - Helper Views
 
-/// ⭐️ 8. 삭제 버튼이 항상 보이는 커스텀 리스트 행
+/// ⭐️ 8. 삭제 버튼과 8시간 타이머가 포함된 커스텀 리스트 행
 private struct PinListRow: View {
     let pin: Pin
     var onDelete: () -> Void // 삭제 액션을 받을 클로저
 
+    // ⭐️ 8시간(초) = 8 * 60 * 60 = 28800초
+    private var endDate: Date {
+        pin.creationDate.addingTimeInterval(28800)
+    }
+
     var body: some View {
         HStack {
-            // 기존 핀 내용
-            PinRowView(pin: pin)
+            // ⭐️ 9. 핀 내용과 타이머를 수직으로 쌓는 VStack
+            VStack(alignment: .leading, spacing: 6) {
+                PinRowView(pin: pin)
+                
+                // --- ⭐️ 10. 8시간 카운트다운 타이머 뷰 ---
+                HStack(spacing: 4) {
+                    Image(systemName: "hourglass")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    
+                    // 1초마다 뷰를 갱신하는 TimelineView
+                    TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+                        // endDate까지 남은 시간을 .timer 스타일로 표시
+                        Text(endDate, style: .timer)
+                            .font(.caption.monospacedDigit()) // 숫자가 흔들리지 않음
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+                // --- 타이머 뷰 끝 ---
+            }
             
             Spacer()
             

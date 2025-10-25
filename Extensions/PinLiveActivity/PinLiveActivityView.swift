@@ -12,7 +12,7 @@ import SwiftUI
 struct PinLiveActivityLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PinActivityAttributes.self) { context in
-            // 잠금화면 UI
+            // 1. 잠금화면 UI
             LockScreenView(context: context)
                 .padding()
                 .activityBackgroundTint(Color.black.opacity(0.3))
@@ -22,9 +22,15 @@ struct PinLiveActivityLiveActivity: Widget {
             DynamicIsland {
                 // 확장 UI
                 DynamicIslandExpandedRegion(.leading) {
-//                    Image(systemName: "pin.fill").font(.title3).padding(.leading, 5)
+                    // 비워둠
                 }
-                DynamicIslandExpandedRegion(.trailing) { }
+                // 2. 다이나믹 아일랜드 우상단 영역
+                DynamicIslandExpandedRegion(.trailing) {
+                    // 글자 없는 타이머를 우상단에 배치
+                    TimerProgressView(creationDate: context.attributes.creationDate)
+                        .padding(.trailing, 5) // DI 영역 내 패딩
+                }
+                // 3. 다이나믹 아일랜드 하단 영역 (콘텐츠만)
                 DynamicIslandExpandedRegion(.bottom) {
                     ExpandedContentView(context: context)
                         .padding(.horizontal)
@@ -46,38 +52,76 @@ struct PinLiveActivityLiveActivity: Widget {
     }
 }
 
+// ⭐️ 4. TimerProgressView 수정: 아이콘 색상을 .primary로 변경
+private struct TimerProgressView: View {
+    let creationDate: Date
+    private let totalDuration: Double = 8 * 60 * 60 // 28800초 (8시간)
+    
+    var body: some View {
+        // ZStack으로 ProgressView와 Image를 겹쳐서 배치
+        ZStack {
+            // 1분(60초)마다 뷰를 갱신
+            TimelineView(.periodic(from: .now, by: 60.0)) { context in
+                let remainingTime = creationDate.addingTimeInterval(totalDuration).timeIntervalSince(context.date)
+                
+                ProgressView(value: max(0, remainingTime), total: totalDuration)
+                    .progressViewStyle(.circular)
+                    .tint(.primary) // ⭐️ (흰색/검은색) 자동 조절
+                    .labelsHidden() // 텍스트를 확실히 숨김
+            }
+            
+            // hourglass 아이콘 추가
+            Image(systemName: "hourglass")
+                .font(.caption2) // 아이콘 크기 조정
+                .foregroundColor(.primary) // ⭐️ .white에서 .primary로 변경
+                .opacity(0.7) // ⭐️ 아이콘이 링보다 덜 튀도록
+        }
+        .frame(width: 24, height: 24) // 크기 고정
+    }
+}
+
+
 // MARK: - 재사용 UI 컴포넌트
 
-// LA UI를 그리는 메인 뷰
+// 5. LA 콘텐츠 뷰 (변경 없음)
 struct ExpandedContentView: View {
     let context: ActivityViewContext<PinActivityAttributes>
 
     var body: some View {
         PinContentView(
-                    content: context.state.content, // context에서 데이터 전달
-                    pinType: context.attributes.pinType, // context에서 데이터 전달
-                    metadataTitle: context.state.metadataTitle, // context에서 데이터 전달
-                    metadataFaviconData: context.state.metadataFaviconData // context에서 데이터 전달
-                )
+            content: context.state.content,
+            pinType: context.attributes.pinType,
+            metadataTitle: context.state.metadataTitle,
+            metadataFaviconData: context.state.metadataFaviconData
+        )
     }
 }
 
-// 잠금화면 뷰
+// 6. 잠금화면 뷰 (변경 없음 - TimerProgressView를 사용하므로 자동 적용)
 struct LockScreenView: View {
     let context: ActivityViewContext<PinActivityAttributes>
     var body: some View {
-        ExpandedContentView(context: context)
+        // ZStack을 사용해 우상단 정렬 구현
+        ZStack(alignment: .topTrailing) {
+            
+            // 기본 콘텐츠 (왼쪽 정렬됨)
+            ExpandedContentView(context: context)
+                // 타이머가 겹칠 공간을 확보하기 위해 우측 패딩
+                .padding(.trailing, 30)
+            
+            // 글자 없는 원형 타이머
+            TimerProgressView(creationDate: context.attributes.creationDate)
+        }
     }
 }
 
 
 // MARK: - SwiftUI Preview
 
-// Preview에서 사용할 샘플 데이터 정의 (기존 코드 유지)
+// Preview에서 사용할 샘플 데이터 정의 (오타 수정됨)
 extension PinActivityAttributes {
     fileprivate static var previewText: PinActivityAttributes { PinActivityAttributes(pinType: .text, creationDate: .now) }
     fileprivate static var previewURL: PinActivityAttributes { PinActivityAttributes(pinType: .url, creationDate: .now) }
-    // 아이콘 데이터를 포함한 URL 샘플 추가 (SF Symbol 사용)
     fileprivate static var previewURLWithIcon: PinActivityAttributes { PinActivityAttributes(pinType: .url, creationDate: .now) }
 }
 
@@ -88,7 +132,6 @@ extension PinActivityAttributes.ContentState {
      fileprivate static var urlExample: PinActivityAttributes.ContentState {
          .init(content: "https://www.apple.com", metadataTitle: "Apple (Preview)", metadataFaviconData: nil) // 아이콘 없음
      }
-    // 아이콘 데이터를 포함한 URL 샘플 추가 (SF Symbol 사용)
     fileprivate static var urlExampleWithIcon: PinActivityAttributes.ContentState {
         .init(content: "https://developer.apple.com",
               metadataTitle: "Apple Developer",
@@ -97,20 +140,7 @@ extension PinActivityAttributes.ContentState {
 }
 
 
-// --- ⭐️ 수정된 Preview 코드 ---
-
-// 1. 잠금화면 (Lock Screen / Notification)
-//#Preview("Lock Screen - Text", as: .content, using: PinActivityAttributes.previewText) {
-//   PinLiveActivityLiveActivity()
-//} contentStates: {
-//    PinActivityAttributes.ContentState.textExample
-//}
-//
-//#Preview("Lock Screen - URL (No Icon)", as: .content, using: PinActivityAttributes.previewURL) {
-//   PinLiveActivityLiveActivity()
-//} contentStates: {
-//    PinActivityAttributes.ContentState.urlExample
-//}
+// --- Preview 코드 (변경 없음) ---
 
 #Preview("Lock Screen - URL (With Icon)", as: .content, using: PinActivityAttributes.previewURLWithIcon) {
    PinLiveActivityLiveActivity()
@@ -118,22 +148,12 @@ extension PinActivityAttributes.ContentState {
     PinActivityAttributes.ContentState.urlExampleWithIcon
 }
 
-
-// 2. 다이나믹 아일랜드 - 축소 (Compact)
 #Preview("Dynamic Island Compact - Text", as: .dynamicIsland(.compact), using: PinActivityAttributes.previewText) {
    PinLiveActivityLiveActivity()
 } contentStates: {
     PinActivityAttributes.ContentState.textExample
 }
 
-//#Preview("Dynamic Island Compact - URL", as: .dynamicIsland(.compact), using: PinActivityAttributes.previewURL) {
-//   PinLiveActivityLiveActivity()
-//} contentStates: {
-//    PinActivityAttributes.ContentState.urlExample // 축소 상태는 아이콘 표시 안 함
-//}
-
-
-// 3. 다이나믹 아일랜드 - 확장 (Expanded)
 #Preview("Dynamic Island Expanded - Text", as: .dynamicIsland(.expanded), using: PinActivityAttributes.previewText) {
    PinLiveActivityLiveActivity()
 } contentStates: {
@@ -152,10 +172,8 @@ extension PinActivityAttributes.ContentState {
     PinActivityAttributes.ContentState.urlExampleWithIcon
 }
 
-
-// 4. 다이나믹 아일랜드 - 최소 (Minimal)
 #Preview("Dynamic Island Minimal", as: .dynamicIsland(.minimal), using: PinActivityAttributes.previewText) {
    PinLiveActivityLiveActivity()
 } contentStates: {
-    PinActivityAttributes.ContentState.textExample // 최소 상태는 내용 표시 안 함
+    PinActivityAttributes.ContentState.textExample
 }
