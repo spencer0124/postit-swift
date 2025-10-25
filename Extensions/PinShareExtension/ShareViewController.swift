@@ -7,17 +7,18 @@ class ShareViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        self.view.backgroundColor = .clear
+        self.view.backgroundColor = .clear // 배경은 투명하게 유지
 
         Task {
             guard let sharedContent = await getSharedContent(),
                   let encodedContent = sharedContent.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
             else {
+                // 콘텐츠 가져오기 실패 시 즉시 종료 (정상)
                 self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
                 return
             }
 
-            // ⭐️ 변경: URL 생성 시 AppConstants 사용
+            // URL 생성
             let urlString = "\(AppConstants.urlScheme)://\(AppConstants.shareSheetHost)?\(AppConstants.contentQueryItemName)=\(encodedContent)"
             guard let url = URL(string: urlString) else {
                 print("Share Extension: URL 생성 실패")
@@ -25,11 +26,26 @@ class ShareViewController: UIViewController {
                 return
             }
 
-            openURL(url)
+            // 메인 앱 열기 시도
+            let didOpen = openURL(url) // openURL 함수 자체는 Bool을 반환
+            
+            if didOpen {
+                // ⭐️⭐️⭐️ 수정된 부분: 앱 열기 성공 시 잠시 대기 ⭐️⭐️⭐️
+                // 메인 앱으로 전환될 시간을 벌어주기 위해 0.5초 대기합니다.
+                // (단위: 나노초, 0.5초 = 500,000,000 나노초)
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                print("Share Extension: 0.5초 대기 후 종료")
+            } else {
+                // 앱 열기 실패 시 즉시 종료 (정상)
+                print("Share Extension: 앱 열기 실패, 즉시 종료")
+            }
+            
+            // Extension 종료 요청
             self.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
         }
     }
 
+    // openURL 함수는 변경 없음
     @objc private func openURL(_ url: URL) -> Bool {
         var responder: UIResponder? = self
         while responder != nil {
@@ -44,6 +60,7 @@ class ShareViewController: UIViewController {
         return false
     }
 
+    // getSharedContent 함수는 변경 없음
     private func getSharedContent() async -> String? {
         guard let extensionItem = extensionContext?.inputItems.first as? NSExtensionItem,
               let itemProvider = extensionItem.attachments?.first else {
