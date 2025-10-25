@@ -40,7 +40,7 @@ struct PinLiveActivityLiveActivity: Widget {
             } minimal: {
                  Image(systemName: "pin.fill")
             }
-            .widgetURL(URL(string: "pinapp://open"))
+            .widgetURL(URL(string: AppConstants.liveActivityDeepLink))
             .keylineTint(Color.white)
         }
     }
