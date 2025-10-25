@@ -9,10 +9,10 @@ import SwiftUI
 
 struct Tab1View: View {
     @EnvironmentObject var viewModel: ActivePinsViewModel
+    // ⭐️ displaySharedView 환경 값 받기
     @Environment(\.displaySharedView) var displaySharedView
     
     var body: some View {
-        // ⭐️ 1. NavigationStack에 .toolbar를 적용합니다.
         NavigationStack {
             VStack(spacing: 0) {
                 if viewModel.activePins.isEmpty {
@@ -29,8 +29,7 @@ struct Tab1View: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("핀 대시보드") // VStack에도 적용 가능 (선택)
-            // ⭐️ 2. .toolbar를 NavigationStack 레벨로 이동
+            .navigationTitle("핀 대시보드")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
@@ -42,14 +41,16 @@ struct Tab1View: View {
             }
         }
         .sheet(isPresented: $viewModel.isShowingEditor) {
+            // ⭐️ PinEditorView에 displaySharedView 클로저 전달
             PinEditorView(onCommit: displaySharedView)
                 .environmentObject(viewModel)
         }
     }
 }
 
-// MARK: - Helper Views (변경 없음)
+// MARK: - Helper Views (PinListRow, EmptyStateView 변경 없음)
 private struct PinListRow: View {
+    // ... (내용 동일) ...
     let pin: Pin
     var onDelete: () -> Void
     private var endDate: Date { pin.creationDate.addingTimeInterval(28800) }
@@ -73,6 +74,7 @@ private struct PinListRow: View {
     }
 }
 private struct EmptyStateView: View {
+    // ... (내용 동일) ...
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: "pin.slash").font(.system(size: 48, weight: .light)).foregroundColor(.secondary)

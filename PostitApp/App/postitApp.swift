@@ -26,6 +26,8 @@ struct postitApp: App {
                 .fullScreenCover(item: $contentForSharedView,
                                  onDismiss: {
                                      contentForSharedView = nil
+                                     // ⭐️ Cover 닫힐 때 ViewModel 상태 확실히 리셋
+                                     viewModel.resetSharedPinProcessingState()
                                  }) { item in
                     SharedPinView(content: item.content, source: item.source)
                         .environmentObject(viewModel)
@@ -35,18 +37,23 @@ struct postitApp: App {
                         contentForSharedView = nil
                     }
                 }
-                // ⭐️ displaySharedView 클로저 수정
+                // ⭐️ displaySharedView 클로저 수정 (Task.sleep 다시 추가)
                 .environment(\.displaySharedView) { content in
                     // 1. 먼저 시트를 닫도록 상태 변경
                     self.viewModel.isShowingEditor = false
-                    
+
                     // ⭐️ 2. 아주 짧게 지연시킨 후 커버를 띄우도록 상태 변경
                     Task {
-                        // 0.1초 정도 딜레이 (시트 닫힐 시간)
-                        try? await Task.sleep(nanoseconds: 100_000_000)
+                        // 0.2초 정도 딜레이 (시트 닫힐 시간 확보)
+                        try? await Task.sleep(nanoseconds: 200_000_000)
                         // 메인 액터에서 상태 업데이트 보장
                         await MainActor.run {
-                            self.contentForSharedView = IdentifiableSourceContent(content: content, source: .manualAdd)
+                            // ⭐️ 상태 업데이트 전 ViewModel 상태 확인 (선택적 안전장치)
+                            // if viewModel.sharedPinProcessingState == .idle {
+                                self.contentForSharedView = IdentifiableSourceContent(content: content, source: .manualAdd)
+                            // } else {
+                            //     print("Delay ended, but ViewModel state wasn't idle. Aborting cover presentation.")
+                            // }
                         }
                     }
                 }
@@ -80,3 +87,4 @@ extension EnvironmentValues {
         set { self[DisplaySharedViewKey.self] = newValue }
     }
 }
+

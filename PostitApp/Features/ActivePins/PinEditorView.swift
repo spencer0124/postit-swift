@@ -2,48 +2,93 @@
 //  PinEditorView.swift
 //  postit
 //
-//  Created by SeungYong on 10/20/25.
+//  Created by SeungYong on 10/20/25
 //
 
 import SwiftUI
 
 struct PinEditorView: View {
     let onCommit: (String) -> Void
-    // ⭐️ viewModel 참조는 유지 (isShowingEditor 제어용)
     @EnvironmentObject var viewModel: ActivePinsViewModel
     @State private var text: String = ""
-    @Environment(\.dismiss) var dismiss
+
+    // ⭐️ 1. 'private' 제거
+    var screenBackground: Color = Color(uiColor: .systemGroupedBackground)
 
     var body: some View {
-        NavigationStack {
-            VStack {
+        ZStack(alignment: .bottom) {
+            screenBackground.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                // Use the HeaderView (now not private)
+                HeaderView {
+                    viewModel.isShowingEditor = false
+                }
+                .padding(.horizontal)
+                .padding(.top, 20)
+                .padding(.bottom, 15)
+
                 TextEditor(text: $text)
                     .frame(height: 150)
-                    .border(Color.gray.opacity(0.2), width: 1)
-                    .padding()
+                    .background(Color(uiColor: .systemBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .padding(.horizontal)
+
                 Spacer()
             }
-            .navigationTitle("새 포스트잇")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") {
-                        // 취소 시에는 dismiss 또는 viewModel 상태 변경
-                        viewModel.isShowingEditor = false
-                        // dismiss() // 직접 dismiss 대신 viewModel 상태 변경 사용 권장
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("고정") {
-                        // ⭐️ onCommit만 호출 (dismiss 없음)
-                        onCommit(text)
-                    }
-                    .disabled(text.isEmpty)
-                }
+
+            // Use the BottomButton (now not private)
+            BottomButton(text: $text, onCommit: onCommit)
+                .padding(.horizontal)
+                .padding(.bottom)
+        }
+//        .ignoresSafeArea(.keyboard, edges: .bottom)
+    }
+}
+
+// MARK: - Helper Views (private removed)
+
+struct HeaderView: View {
+    var onCancel: () -> Void
+
+    var body: some View {
+        HStack {
+            Text("새 핀")
+                .font(.headline.weight(.semibold))
+            Spacer()
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.primary)
+                    .padding(8)
+                    .background(Color.gray.opacity(0.2))
+                    .clipShape(Circle())
             }
         }
     }
 }
+
+struct BottomButton: View {
+    @Binding var text: String
+    let onCommit: (String) -> Void
+
+    var body: some View {
+        Button {
+            onCommit(text)
+        } label: {
+            Text("고정")
+                .font(.headline.weight(.semibold))
+                .foregroundColor(text.isEmpty ? .white.opacity(0.5) : .white)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(text.isEmpty ? Color.blue.opacity(0.5) : Color.blue)
+                .cornerRadius(15)
+        }
+        .disabled(text.isEmpty)
+        .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
+    }
+}
+
 
 // Preview
 #Preview {
