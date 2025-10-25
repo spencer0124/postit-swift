@@ -9,10 +9,12 @@ import SwiftUI
 
 struct ContentView: View {
     
-    // 1. 현재 선택된 탭을 추적하는 상태 변수!
-    @State private var selectedTab: Tab = .dashboard
+    // ⭐️ @State -> @Binding 변경
+    @Binding var selectedTab: Tab
     
-    // 2. 탭을 명확하게 구분하기 위한 열거형(Enum)
+    // ⭐️ displaySharedView 환경 값 받기 (하위 뷰 전달용)
+    @Environment(\.displaySharedView) var displaySharedView
+    
     enum Tab {
         case dashboard
         case archive
@@ -20,7 +22,6 @@ struct ContentView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            // 3. 선택된 탭에 따라 메인 뷰를 교체
             VStack {
                 switch selectedTab {
                 case .dashboard:
@@ -30,24 +31,23 @@ struct ContentView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            // ⭐️ displaySharedView 환경 값을 하위 뷰로 전달
+            .environment(\.displaySharedView, displaySharedView)
             
-            // 4. 커스텀 탭 바를 화면 하단에 오버레이로 띄움
             CustomTabBar(selectedTab: $selectedTab)
-                .padding(.bottom, 0) // 하단 Safe Area와 약간의 여유 공간
+                .padding(.bottom, 0)
         }
-        .ignoresSafeArea(.keyboard) // 키보드가 올라올 때 탭 바가 밀려나지 않도록
+        .ignoresSafeArea(.keyboard)
     }
 }
 
-// MARK: - 커스텀 탭 바 뷰
-
+// MARK: - 커스텀 탭 바 뷰 (변경 없음)
 private struct CustomTabBar: View {
-    
+    // ... (내용 동일) ...
     @Binding var selectedTab: ContentView.Tab
     
     var body: some View {
         HStack(spacing: 0) {
-            // "핀 대시보드" 탭 버튼
             TabBarButton(
                 icon: "pin.fill",
                 label: "핀 대시보드",
@@ -58,10 +58,7 @@ private struct CustomTabBar: View {
                     }
                 }
             )
-            
             Spacer()
-            
-            // "보관함" 탭 버튼
             TabBarButton(
                 icon: "archivebox.fill",
                 label: "보관함",
@@ -75,16 +72,16 @@ private struct CustomTabBar: View {
         }
         .padding(.horizontal, 40)
         .padding(.vertical, 14)
-        .frame(width: 280) // 탭 바의 전체 너비 고정 (토스 스타일)
-        .background(.ultraThinMaterial) // 애플의 블러(Blur) 효과
-        .clipShape(Capsule()) // 캡슐 모양으로 자르기
-        .shadow(color: .black.opacity(0.15), radius: 10, y: 5) // 은은한 그림자
+        .frame(width: 280)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+        .shadow(color: .black.opacity(0.15), radius: 10, y: 5)
     }
 }
 
-// MARK: - 탭 바 내부 버튼 뷰
-
+// MARK: - 탭 바 내부 버튼 뷰 (변경 없음)
 private struct TabBarButton: View {
+    // ... (내용 동일) ...
     let icon: String
     let label: String
     let isSelected: Bool
@@ -98,15 +95,20 @@ private struct TabBarButton: View {
                 Text(label)
                     .font(.system(size: 10, weight: .medium))
             }
-            .foregroundColor(isSelected ? .primary : .secondary) // 선택 시 강조
+            .foregroundColor(isSelected ? .primary : .secondary)
         }
-        .frame(width: 80) // 버튼의 탭 영역
+        .frame(width: 80)
     }
 }
 
-// MARK: - Preview
-
+// MARK: - Preview (변경 없음)
 #Preview {
-    ContentView()
-        .environmentObject(ActivePinsViewModel()) // ViewModel 주입은 그대로 유지
+    struct PreviewWrapper: View {
+        @State private var tab: ContentView.Tab = .dashboard
+        var body: some View {
+            ContentView(selectedTab: $tab)
+                .environmentObject(ActivePinsViewModel())
+        }
+    }
+    return PreviewWrapper()
 }
