@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ContentView: View {
     
-    // 1. 현재 선택된 탭을 추적하는 상태 변수
+    // 1. 현재 선택된 탭을 추적하는 상태 변수!
     @State private var selectedTab: Tab = .dashboard
     
     // 2. 탭을 명확하게 구분하기 위한 열거형(Enum)
