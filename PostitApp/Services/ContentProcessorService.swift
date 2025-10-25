@@ -21,25 +21,17 @@ class ContentProcessorService {
         // 2. 타입별 처리 분기
         switch pinType {
         case .url:
-            // URL인 경우 MetadataService 호출 (콜백을 async/await로 변환)
-            let metadataResult: MetadataService.Metadata? = await withCheckedContinuation { continuation in
-                MetadataService.fetchMetadata(for: content) { metadata in
-                    continuation.resume(returning: metadata)
-                }
-            }
+            // ⭐️ 변경: await로 직접 호출
+            let metadataResult = await MetadataService.fetchMetadata(for: content)
 
-            // MetadataService가 실패했는지 여부 확인 (nil 반환 시 실패로 간주)
-            // 참고: MetadataService 내부에서 title만 실패하고 favicon은 성공할 수도 있음
-            //       여기서는 둘 중 하나라도 nil이면 실패로 처리할지, 아니면 nil이라도 성공으로 넘길지 결정 필요.
-            //       현재는 nil이라도 성공으로 넘김 (제목 없어도 LA 띄우는 게 낫다고 판단)
-            
+            // 이후 로직은 동일
             let processed = ProcessedContent(
                 originalContent: content,
                 pinType: .url,
                 metadataTitle: metadataResult?.title,
                 metadataFaviconData: metadataResult?.faviconData
             )
-            return .success(processed) // URL 처리는 메타데이터 Fetch 실패 여부와 관계없이 성공
+            return .success(processed)
 
         case .text:
             // 텍스트는 별도 처리 없이 바로 성공 결과 반환
