@@ -18,7 +18,7 @@ struct Tab2View: View {
                     PinRowView(pin: pin)
                 }
             }
-            .navigationTitle("기록")
+            .navigationTitle("보관함")
             .overlay {
                 if viewModel.archivedPins.isEmpty {
                     Text("보관된 기록이 없습니다.")
