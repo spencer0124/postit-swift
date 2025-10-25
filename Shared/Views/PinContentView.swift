@@ -16,8 +16,7 @@
 import SwiftUI
 import UIKit
 
-// LA와 앱 내 미리보기에서 모두 사용하는 '공통 UI'입니다.
-// ActivityKit에 의존하지 않고, 순수 데이터만 받아서 그립니다.
+
 struct PinContentView: View {
     let content: String
     let pinType: PinType
@@ -26,9 +25,9 @@ struct PinContentView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
-            Text("📌 고정된 메모")
-                .font(.caption)
-                .foregroundColor(.secondary)
+//            Text("📌 고정된 메모")
+//                .font(.caption)
+//                .foregroundColor(.secondary)
 
             if pinType == .url {
                 // --- URL 타입일 경우 ---
@@ -66,4 +65,41 @@ struct PinContentView: View {
         // 이 뷰가 항상 최대 너비를 차지하고 왼쪽 정렬되도록 합니다.
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
+
+// MARK: - SwiftUI Preview
+
+#Preview("Text Pin") {
+    PinContentView(
+        content: "간단한 텍스트 메모입니다. 최대 3줄까지 보일 수 있어요.",
+        pinType: .text,
+        metadataTitle: nil,
+        metadataFaviconData: nil
+    )
+    .padding() // 패딩을 추가하여 컨텐츠 주변 여백 확인
+    .background(Color.gray.opacity(0.1)) // 배경색 추가
+}
+
+#Preview("URL Pin (With Metadata)") {
+    PinContentView(
+        content: "https://www.apple.com/kr/", // 원본 URL
+        pinType: .url,
+        metadataTitle: "Apple (대한민국)", // 가져온 제목
+        // 실제 앱에서는 MetadataService에서 가져온 이미지 데이터를 사용해야 함
+        // 여기서는 임시 SF Symbol 이미지 데이터 사용 (미리보기용)
+        metadataFaviconData: UIImage(systemName: "apple.logo")?.pngData()
+    )
+    .padding()
+    .background(Color.gray.opacity(0.1))
+}
+
+#Preview("URL Pin (No Metadata)") {
+    PinContentView(
+        content: "https://some-unknown-url.com", // 원본 URL
+        pinType: .url,
+        metadataTitle: nil, // 제목 가져오기 실패
+        metadataFaviconData: nil // 아이콘 가져오기 실패
+    )
+    .padding()
+    .background(Color.gray.opacity(0.1))
 }
