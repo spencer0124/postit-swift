@@ -1,32 +1,16 @@
-//
-//  SharedPinView.swift
-//  postit
-//
-//  Created by SeungYong on 10/20/25.
-//
+// PostitApp/Features/SharedPinView/SharedPinView.swift
 
 import SwiftUI
-import UIKit // UIPasteboard를 사용하기 위해 import
+import UIKit // UINotificationFeedbackGenerator
 
-// MARK: - 공유 완료 화면 UI (모듈화 + 상태 분기)
+// MARK: - 공유 완료 화면 UI (ViewModel 로직 분리됨)
 struct SharedPinView: View {
     @EnvironmentObject var viewModel: ActivePinsViewModel
     let content: String
 
     @Environment(\.dismiss) var dismiss
 
-    // --- UI 상태를 관리하는 Enum ---
-    enum ProcessingState {
-        case idle // 초기 상태
-        case loading // 처리 중
-        case success // 성공
-        case error(String) // 실패 (에러 메시지 포함)
-    }
-
-    // --- 상태 변수 ---
-    @State private var processingState: ProcessingState = .idle
-    @State private var processedContent: ProcessedContent? = nil // 처리된 결과 저장
-
+    // 코너 힌트 애니메이션 상태는 View에 유지
     @State private var showCornerHint = false
     @State private var cornerHintAnimating = false
 
@@ -38,57 +22,61 @@ struct SharedPinView: View {
                 VStack {
                     Spacer()
 
-                    // --- 상태별 UI 분기 ---
-                    switch processingState {
+                    // --- 상태별 UI 분기 (ViewModel 상태 참조) ---
+                    switch viewModel.sharedPinProcessingState {
                     case .idle, .loading:
-                        VStack(spacing: 20) { // 로딩 상태 UI 개선
+                        VStack(spacing: 20) {
                             ProgressView()
                             Text("포스트잇 처리 중...")
                                 .font(.headline)
                                 .foregroundColor(.secondary)
                         }
-                        .frame(height: 100) // 헤더 높이와 맞춤
-                        // 로딩 중에는 목업 자리를 비워둡니다.
-                        // 화면 크기에 따라 목업 높이가 달라지므로, 패딩을 사용합니다.
+                        .frame(height: 100)
                         .padding(.bottom, reader.size.height * 0.7)
 
-
                     case .success:
-                        // --- 성공 UI ---
                         VStack(spacing: 10) {
-                            SuccessHeaderView() // 성공 헤더
-                            // 성공 시에만 목업 표시, 처리된 결과 전달
+                            SuccessHeaderView()
                             iPhoneMockupView(
-                                processedContent: processedContent, // <- 여기가 중요!
+                                processedContent: viewModel.processedContentForPreview,
                                 reader: reader,
                                 isPinVisible: .constant(true)
                             )
-                            // 목업이 남은 공간을 차지하도록 유연한 높이 설정
                             .frame(maxHeight: reader.size.height * 0.7)
                         }
                         .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .center)))
+                        .onAppear {
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            Task {
+                                try? await Task.sleep(nanoseconds: 2_800_000_000)
+                                withAnimation(.easeInOut(duration: 0.5)) {
+                                    showCornerHint = true
+                                }
+                            }
+                        }
 
                     case .error(let message):
-                        // --- 실패 UI ---
                         VStack(spacing: 10) {
-                            ErrorHeaderView(errorMessage: message) // 실패 헤더
-                            // 실패 시 목업은 보여주지 않음
-                            Spacer() // 에러 메시지가 중앙에 오도록 Spacer 추가
+                            ErrorHeaderView(errorMessage: message)
+                            Spacer()
                         }
-                        .frame(maxHeight: .infinity) // 전체 높이 사용
+                        .frame(maxHeight: .infinity)
                         .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .center)))
+                        .onTapGesture {
+                             dismiss()
+                        }
                     }
 
-                    Spacer() // 하단 정렬용 Spacer 제거 (VStack이 중앙 정렬되도록)
+                    Spacer()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity) // VStack이 전체 공간 차지
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // --- '탭하여 돌아가기' 힌트 (성공 시에만 표시) ---
-                if case .success = processingState, showCornerHint {
+                // --- '탭하여 돌아가기' 힌트 ---
+                if case .success = viewModel.sharedPinProcessingState, showCornerHint {
                      HStack(spacing: 6) {
                          Image(systemName: "arrow.up.left")
                              .font(.footnote.weight(.bold))
-                         Text("사용하던 앱으로 돌아가기") // 텍스트 수정
+                         Text("사용하던 앱으로 돌아가기")
                              .font(.caption.bold())
                      }
                      .foregroundColor(.secondary)
@@ -105,61 +93,25 @@ struct SharedPinView: View {
                              cornerHintAnimating.toggle()
                          }
                      }
+                    
                 }
             }
-            .onAppear(perform: processAndPinContent)
-        }
-        // 하단 Safe Area 무시 제거 (전체 화면 사용)
-        // .ignoresSafeArea(.container, edges: .bottom)
-    }
-
-    // --- 콘텐츠 처리 및 Pin 추가 로직 ---
-    private func processAndPinContent() {
-        // 이미 처리 중이면 중복 실행 방지
-//        guard processingState == ProcessingState.idle else { return } // <- 'ProcessingState.' 추가
-
-        processingState = .loading // 로딩 상태 시작
-
-        Task {
-            // 1. ContentProcessorService 호출
-            let result = await ContentProcessorService.processContent(content)
-
-            switch result {
-            case .success(let processed):
-                // 2. 처리 성공 시, ViewModel에 Pin 추가 (LA 시작)
-                if viewModel.addPin(processedContent: processed) != nil {
-                    // 3. LA 시작 성공 시
-                    self.processedContent = processed // 결과 저장 for 목업
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
-                        processingState = .success // 성공 UI 표시
-                    }
-                    UINotificationFeedbackGenerator().notificationOccurred(.success) // 햅틱
-
-                    // 4. 성공 애니메이션 후 돌아가기 힌트 표시
-                    try? await Task.sleep(nanoseconds: 2_800_000_000) // 2.8초 대기
-                    withAnimation(.easeInOut(duration: 0.5)) {
-                        showCornerHint = true
-                    }
-                } else {
-                    // LA 시작 실패 시
-                    withAnimation {
-                        processingState = .error(ContentProcessingError.liveActivityStartFailed.localizedDescription)
-                    }
+            // --- View가 나타날 때 ViewModel 함수 호출 ---
+            .onAppear {
+                Task {
+                    await viewModel.processAndPinSharedContent(content)
                 }
-
-            case .failure(let error):
-                // 처리 실패 시
-                withAnimation {
-                    processingState = .error(error.localizedDescription)
-                }
+            }
+            // --- View가 사라질 때 ViewModel 상태 초기화 ---
+            .onDisappear {
+                 viewModel.resetSharedPinProcessingState()
             }
         }
     }
 }
 
-// MARK: - 성공/실패 헤더 뷰 (★★★ 코드 추가 ★★★)
+// --- Helper Views ---
 private struct SuccessHeaderView: View {
-    // 이제 View 프로토콜을 따릅니다.
     var body: some View {
         VStack(spacing: 10) {
             Image(systemName: "checkmark.circle.fill")
@@ -170,13 +122,12 @@ private struct SuccessHeaderView: View {
                 .font(.headline)
                 .foregroundColor(.secondary)
         }
-        .frame(height: 100) // 고정 높이
+        .frame(height: 100)
     }
 }
 
 private struct ErrorHeaderView: View {
-    // 이제 View 프로토콜을 따릅니다.
-    let errorMessage: String // errorMessage를 받도록 수정
+    let errorMessage: String
 
     var body: some View {
         VStack(spacing: 10) {
@@ -193,20 +144,23 @@ private struct ErrorHeaderView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
         }
-        .frame(height: 100) // 고정 높이
+        .frame(height: 100)
     }
 }
 
-// MARK: - 아이폰 목업 뷰 (별도 파일 또는 여기에 포함)
-// iPhoneMockupView.swift 파일이 따로 있다면 이 부분은 삭제해야 합니다.
-// struct iPhoneMockupView: View { ... }
+// MARK: - Preview
 
-// --- PinContentView는 별도 공유 파일로 있어야 합니다 ---
-// struct PinContentView: View { ... }
 
-// MARK: - Preview (변경 없음)
-// ...
-#Preview {
-    SharedPinView(content: "Apple Park 방문객을 위한 새로운 경험")
-        .environmentObject(ActivePinsViewModel())
+#Preview("Success State") {
+    let successViewModel = ActivePinsViewModel()
+    successViewModel.sharedPinProcessingState = .success
+    successViewModel.processedContentForPreview = ProcessedContent(
+        originalContent: "https://www.apple.com/kr/",
+        pinType: .url,
+        metadataTitle: "Apple (대한민국) - 미리보기",
+        metadataFaviconData: UIImage(systemName: "apple.logo")?.pngData()
+    )
+
+    return SharedPinView(content: "https://www.apple.com/kr/")
+        .environmentObject(successViewModel)
 }
