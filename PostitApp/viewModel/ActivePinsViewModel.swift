@@ -3,18 +3,30 @@
 import Foundation
 import ActivityKit
 import SwiftUI
+import SwiftData // 1. Import
 
 @MainActor
 class ActivePinsViewModel: ObservableObject {
 
-    @Published var activePins: [Pin] = []
-    @Published var isShowingEditor = false // isShowingEditor 사용
-    private var liveActivities: [UUID: Activity<PinActivityAttributes>] = [:]
+    @Published var activePins: [Pin] = [] // 활성 핀 (In-Memory)
+    @Published var isShowingEditor = false
+    
+    // ⭐️ 2. modelContext를 저장할 프라이빗 변수
+    private var modelContext: ModelContext?
+    
+    // ⭐️ 3. modelContext를 주입받는 함수
+    func setModelContext(_ context: ModelContext) {
+        self.modelContext = context
+        // TODO: 앱 실행 시 활성화된 LA가 있다면 여기서 로드
+    }
+    
+    // ⭐️ 4. liveActivities 딕셔너리 제거
+    // (이제 Pin.associatedActivity 사용)
 
     // MARK: - Shared Pin Processing State
     @Published var sharedPinProcessingState: SharedPinProcessingState = .idle
     @Published var processedContentForPreview: ProcessedContent? = nil
-    @Published var isProcessingManualPin: Bool = false // 중복 실행 방지 플래그
+    @Published var isProcessingManualPin: Bool = false
 
     // Equatable 직접 채택, 에러는 String
     enum SharedPinProcessingState: Equatable {
@@ -41,42 +53,119 @@ class ActivePinsViewModel: ObservableObject {
 
     // Pin 추가 및 LA 시작 (⭐️ 수정된 버전)
     @discardableResult
-    // ⭐️ 1. 함수를 async로 변경
     func addPin(processedContent: ProcessedContent) async -> Activity<PinActivityAttributes>? {
         
-        // ⭐️ 2. 중복 핀 확인 로직 수정
-        if let existingPin = activePins.first(where: { $0.content == processedContent.originalContent }) {
-            print("addPin: Duplicate pin found. Re-pinning (End old, Start new).")
-            
-            // ⭐️ 3. 딕셔너리에서 기존 Activity 찾기
-            if let existingActivity = liveActivities[existingPin.id] {
-                // ⭐️ 4. Task{}로 감싸지 않고, 'await'로 직접 호출하여 종료를 기다림
-                await existingActivity.end(nil, dismissalPolicy: .immediate)
-                print("addPin: Successfully ended old activity \(existingActivity.id)")
-            }
-            
-            // ⭐️ 5. ViewModel에서 기존 Pin/Activity 참조 제거
-            liveActivities.removeValue(forKey: existingPin.id)
-            activePins.removeAll { $0.id == existingPin.id }
-        }
-
-        // --- 이하 코드는 신규 핀 추가 로직 ---
-        print("addPin: Creating new pin.")
-        
-        let newPin = Pin(content: processedContent.originalContent, pinType: processedContent.pinType)
-        activePins.insert(newPin, at: 0)
-        
-        guard let activity = LiveActivityService.start(pin: newPin, processedContent: processedContent) else {
-            print("addPin: LiveActivityService.start failed.")
-            activePins.removeAll { $0.id == newPin.id } // 롤백
+        // ⭐️ 5. modelContext 가드
+        guard let modelContext else {
+            print("addPin: ModelContext is nil.")
             return nil
         }
         
-        liveActivities[newPin.id] = activity
-        Task { await listenForActivityEnd(activity: activity, pinID: newPin.id) }
-        print("addPin: Successfully added pin and started LA.")
+        // ⭐️ 6. 중복 핀 확인 로직 수정 (DB 객체 업데이트)
+        if let existingPin = activePins.first(where: { $0.content == processedContent.originalContent }) {
+            print("addPin: Duplicate pin found. Re-pinning (End old, Start new).")
+            
+            // 6-1. 기존 LA 종료 (await)
+            await existingPin.associatedActivity?.end(nil, dismissalPolicy: .immediate)
+            print("addPin: Successfully ended old activity \(existingPin.id)")
+
+            // 6-2. ⭐️ (DB) 기존 Pin 객체 데이터 업데이트
+            existingPin.creationDate = .now
+            existingPin.showInHistoryAt = .now.addingTimeInterval(8 * 60 * 60) // 8시간
+            existingPin.metadataTitle = processedContent.metadataTitle
+            existingPin.metadataFaviconData = processedContent.metadataFaviconData
+            
+            // 6-3. 새 LA 시작
+            guard let activity = LiveActivityService.start(pin: existingPin, processedContent: processedContent) else {
+                print("addPin: LiveActivityService.start failed for re-pin.")
+                return nil
+            }
+            
+            // 6-4. (In-Memory) 새 Activity 연결
+            existingPin.associatedActivity = activity
+            Task { await listenForActivityEnd(activity: activity, pin: existingPin) } // ⭐️ pin 객체 전달
+            
+            print("addPin: Successfully re-pinned and updated LA.")
+            return activity
+        }
+
+        // --- ⭐️ 7. 신규 핀 추가 로직 (DB Insert) ---
+        print("addPin: Creating new pin.")
+        
+        // 7-1. (DB) 새 Pin 객체 생성 (메타데이터 포함)
+        let newPin = Pin(
+            content: processedContent.originalContent,
+            pinType: processedContent.pinType,
+            metadataTitle: processedContent.metadataTitle,
+            metadataFaviconData: processedContent.metadataFaviconData,
+            creationDate: .now
+        )
+        
+        // 7-2. ⭐️ (DB) modelContext에 삽입
+        modelContext.insert(newPin)
+        
+        // 7-3. (In-Memory) 활성 핀 배열에 추가
+        activePins.insert(newPin, at: 0)
+        
+        // 7-4. LA 시작
+        guard let activity = LiveActivityService.start(pin: newPin, processedContent: processedContent) else {
+            print("addPin: LiveActivityService.start failed.")
+            // 롤백
+            activePins.removeAll { $0.id == newPin.id }
+            modelContext.delete(newPin) // ⭐️ DB 롤백
+            return nil
+        }
+        
+        // 7-5. (In-Memory) Activity 연결
+        newPin.associatedActivity = activity
+        Task { await listenForActivityEnd(activity: activity, pin: newPin) } // ⭐️ pin 객체 전달
+        
+        print("addPin: Successfully added pin, inserted to DB, and started LA.")
         return activity
     }
+    
+    // ⭐️ 8. '다시 핀하기' (Restore) 함수 추가
+    func restorePin(_ pin: Pin) async {
+        guard modelContext != nil else {
+            print("restorePin: ModelContext is nil.")
+            return
+        }
+
+        print("restorePin: Restoring pin \(pin.id)")
+        
+        // 8-1. 핀이 이미 활성 상태인지 확인
+        if let existingActivePin = activePins.first(where: { $0.id == pin.id }) {
+            // 이미 활성 상태면, 중복 핀 처리와 동일하게 LA만 갱신
+            print("RestorePin: Pin is already active. Re-pinning.")
+            await existingActivePin.associatedActivity?.end(nil, dismissalPolicy: .immediate)
+        } else {
+            // 활성 상태가 아니면, 활성 핀 배열에 추가
+            print("RestorePin: Pin is not active. Restoring to active array.")
+            activePins.insert(pin, at: 0)
+        }
+        
+        // 8-2. (DB) 핀의 시간 갱신 (보관함 -> 활성)
+        pin.creationDate = .now
+        pin.showInHistoryAt = .now.addingTimeInterval(8 * 60 * 60)
+        
+        // 8-3. ProcessedContent 재구성 (DB 데이터 사용)
+        let processed = ProcessedContent(
+            originalContent: pin.content,
+            pinType: pin.pinType,
+            metadataTitle: pin.metadataTitle,
+            metadataFaviconData: pin.metadataFaviconData
+        )
+        
+        // 8-4. LA 시작 및 연결
+        guard let activity = LiveActivityService.start(pin: pin, processedContent: processed) else {
+            print("RestorePin: LiveActivityService.start failed.")
+            return
+        }
+        pin.associatedActivity = activity
+        Task { await listenForActivityEnd(activity: activity, pin: pin) }
+        print("RestorePin: Successfully restored pin and started LA.")
+    }
+
 
     // ContentProcessorService 호출 (addPin 사용)
     func addPinAndProcess(content: String) async -> Result<Activity<PinActivityAttributes>?, ContentProcessingError> {
@@ -94,37 +183,45 @@ class ActivePinsViewModel: ObservableObject {
         }
     }
 
-    // 앱 내부 핀 삭제 (변경 없음)
+    // ⭐️ 9. 앱 내부 핀 삭제 (수동) (DB Update 로직)
     func removePin(at offsets: IndexSet) {
         let pinsToRemove = offsets.compactMap { activePins[$0] }
+        
+        // 9-1. (In-Memory) 배열에서 먼저 제거
         activePins.remove(atOffsets: offsets)
         
         for pin in pinsToRemove {
-            if let activity = liveActivities[pin.id] {
-                Task {
-                    await activity.end(nil, dismissalPolicy: .immediate)
-                    print("Live Activity가 수동으로 종료되었습니다: \(activity.id)")
-                }
-                liveActivities.removeValue(forKey: pin.id)
+            // 9-2. ⭐️ (DB) "보여줄 시점"을 즉시로 업데이트
+            pin.showInHistoryAt = .now
+            print("Pin \(pin.id) moved to history (showInHistoryAt set to now)")
+            
+            // 9-3. LA 종료
+            Task {
+                await pin.associatedActivity?.end(nil, dismissalPolicy: .immediate)
+                print("Live Activity가 수동으로 종료되었습니다: \(pin.id)")
             }
+            pin.associatedActivity = nil
         }
     }
     
-    // LA 종료 감지 (변경 없음)
-    private func listenForActivityEnd(activity: Activity<PinActivityAttributes>, pinID: UUID) async {
+    // ⭐️ 10. LA 종료 감지 (시그니처 변경)
+    private func listenForActivityEnd(activity: Activity<PinActivityAttributes>, pin: Pin) async {
         await ActivityStateObserver(activity: activity).activityStateUpdates()
         
         // Activity가 어떤 이유로든 종료되었을 때 (예: 8시간 만료)
-        print("Live Activity가 종료되었습니다 (감지됨): \(activity.id)")
-        removePinFromApp(id: pinID)
+        print("Live Activity가 종료되었습니다 (감지됨): \(pin.id)")
+        removePinFromApp(pin: pin)
     }
     
-    // LA 종료 시 앱 상태 정리 (변경 없음)
+    // ⭐️ 11. LA 종료 시 앱 상태 정리 (DB 작업 불필요)
     @MainActor
-    private func removePinFromApp(id: UUID) {
-        activePins.removeAll { $0.id == id }
-        liveActivities.removeValue(forKey: id)
-        print("앱 내부 데이터 정리 완료: \(id)")
+    private func removePinFromApp(pin: Pin) {
+        // (In-Memory) 활성 배열에서만 제거
+        activePins.removeAll { $0.id == pin.id }
+        pin.associatedActivity = nil
+        
+        // ⭐️ (DB) 작업 필요 없음. showInHistoryAt 시간이 자연 도래함.
+        print("앱 내부 데이터 정리 완료 (In-Memory): \(pin.id)")
     }
 
 
@@ -207,13 +304,19 @@ struct ActivityStateObserver {
     }
 
     func activityStateUpdates() async {
+        // activity.activityStateUpdates는 AsyncStream<ActivityState> 타입입니다.
+        // for await...in 루프를 사용해 상태 변경을 감시합니다.
         for await state in activity.activityStateUpdates {
+            // Activity가 종료되거나(ended) 사용자에 의해 해제되면(dismissed) 루프를 종료합니다.
             if state == .dismissed || state == .ended {
                 print("ActivityStateObserver: Activity \(activity.id) is \(state). Stopping observer.")
                 return
             }
              print("ActivityStateObserver: Activity \(activity.id) state updated to \(state). Continuing observer.")
         }
+        
+        // 만약 스트림이 다른 이유로 종료되면 (예: Activity 자체가 파괴됨)
+        // 이 지점에 도달할 수 있습니다.
          print("ActivityStateObserver: Activity \(activity.id) stream ended.")
     }
 }

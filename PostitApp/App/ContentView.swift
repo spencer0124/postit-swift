@@ -1,20 +1,19 @@
-//
-//  ContentView.swift
-//  postit
-//
-//  Created by SeungYong on 10/20/25.
-//
+// PostitApp/App/ContentView.swift
 
 import SwiftUI
+import SwiftData // 1. Import
 
 struct ContentView: View {
     
-    // ⭐️ @State -> @Binding 변경
     @Binding var selectedTab: Tab
     
-    // ⭐️ displaySharedView 환경 값 받기 (하위 뷰 전달용)
-    @Environment(\.displaySharedView) var displaySharedView
+    // 2. VM들 가져오기
+    @EnvironmentObject var viewModel: ActivePinsViewModel
+    @EnvironmentObject var historyViewModel: HistoryViewModel
     
+    @Environment(\.displaySharedView) var displaySharedView
+    @Environment(\.modelContext) private var modelContext // 3. modelContext 가져오기
+
     enum Tab {
         case dashboard
         case archive
@@ -27,19 +26,29 @@ struct ContentView: View {
                 case .dashboard:
                     Tab1View()
                 case .archive:
-                    Tab2View()
+                    // 4. Tab2View에 selectedTab 바인딩 전달
+                    // (HistoryVM은 이미 Environment에 있음)
+                    Tab2View(selectedTab: $selectedTab)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            // ⭐️ displaySharedView 환경 값을 하위 뷰로 전달
             .environment(\.displaySharedView, displaySharedView)
             
             CustomTabBar(selectedTab: $selectedTab)
                 .padding(.bottom, 0)
         }
         .ignoresSafeArea(.keyboard)
+        // 5. 뷰가 나타날 때 VM들에 modelContext 주입
+        .onAppear {
+            viewModel.setModelContext(modelContext)
+            historyViewModel.setModelContext(modelContext)
+        }
     }
 }
+
+
+
+
 
 // MARK: - 커스텀 탭 바 뷰 (변경 없음)
 private struct CustomTabBar: View {
@@ -108,6 +117,8 @@ private struct TabBarButton: View {
         var body: some View {
             ContentView(selectedTab: $tab)
                 .environmentObject(ActivePinsViewModel())
+                .environmentObject(HistoryViewModel()) // ⭐️ Preview에도 추가
+                // .modelContainer(for: Pin.self, inMemory: true) // Preview를 위해 In-Memory DB 설정
         }
     }
     return PreviewWrapper()
