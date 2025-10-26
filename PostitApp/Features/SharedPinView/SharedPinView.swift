@@ -118,7 +118,7 @@ struct SharedPinView: View {
             } // ZStack 끝
             // ⭐️ onAppear에서 processAndPinSharedContent 호출 (롤백된 버전 확인)
             .onAppear { Task { await viewModel.processAndPinSharedContent(content) } }
-            .onDisappear { viewModel.resetSharedPinProcessingState() }
+//            .onDisappear { viewModel.resetSharedPinProcessingState() }
         } // GeometryReader 끝
     } // body 끝
 } // SharedPinView 끝
