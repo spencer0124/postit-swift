@@ -29,7 +29,7 @@ struct SharedPinView: View {
                     case .idle, .loading:
                         VStack(spacing: 20) {
                             ProgressView()
-                            Text("포스트잇 처리 중...").font(.headline).foregroundColor(.secondary)
+//                            Text("포스트잇 처리 중...").font(.headline).foregroundColor(.secondary)
                         }.frame(height: 100)
                          .padding(.bottom, reader.size.height * (source == .manualAdd ? 0.6 : 0.7))
 
