@@ -38,10 +38,15 @@ struct ContentView: View {
                 .padding(.bottom, 0)
         }
         .ignoresSafeArea(.keyboard)
-        // 5. 뷰가 나타날 때 VM들에 modelContext 주입
+        // 5. ⭐️ 뷰가 나타날 때 VM들에 modelContext 주입 (수정)
         .onAppear {
-            viewModel.setModelContext(modelContext)
+            // HistoryVM은 동기 함수이므로 그대로 둠
             historyViewModel.setModelContext(modelContext)
+            
+            // ⭐️ ActivePinsVM의 초기화 함수는 async이므로 Task로 감쌈
+            Task {
+                await viewModel.initialize(modelContext: modelContext)
+            }
         }
     }
 }

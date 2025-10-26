@@ -1,9 +1,4 @@
-//
-//  Tab1View.swift
-//  postit
-//
-//  Created by SeungYong on 10/20/25.
-//
+// PostitApp/Features/ActivePins/ActivePinsView.swift
 
 import SwiftUI
 
@@ -20,9 +15,11 @@ struct Tab1View: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     List {
+                        // ForEach 수정 (async onDelete 전달)
                         ForEach(Array(viewModel.activePins.enumerated()), id: \.element.id) { index, pin in
                             PinListRow(pin: pin, onDelete: {
-                                viewModel.removePin(at: IndexSet(integer: index))
+                                // ⭐️ async 함수 호출
+                                await viewModel.removePin(at: IndexSet(integer: index))
                             })
                         }
                     }
@@ -48,12 +45,13 @@ struct Tab1View: View {
     }
 }
 
-// MARK: - Helper Views (PinListRow, EmptyStateView 변경 없음)
+// MARK: - Helper Views
 private struct PinListRow: View {
-    // ... (내용 동일) ...
     let pin: Pin
-    var onDelete: () -> Void
-    private var endDate: Date { pin.creationDate.addingTimeInterval(28800) }
+    // ⭐️ onDelete 클로저는 async 유지
+    var onDelete: () async -> Void
+    
+    private var endDate: Date { pin.creationDate.addingTimeInterval(8 * 60 * 60) } // 8시간
 
     var body: some View {
         HStack {
@@ -67,14 +65,20 @@ private struct PinListRow: View {
                 }
             }
             Spacer()
-            Button(action: { withAnimation(.spring()) { onDelete() } }) {
+            // ⭐️ [오류 수정] Button의 action에서 withAnimation 제거
+            Button(action: {
+                Task {
+                    await onDelete() // ⭐️ async 함수만 호출
+                }
+            }) {
                 Image(systemName: "minus.circle.fill").font(.title2).foregroundColor(.red)
             }.buttonStyle(.plain)
         }.padding(.vertical, 4)
     }
 }
+
 private struct EmptyStateView: View {
-    // ... (내용 동일) ...
+    // ... (내용 변경 없음) ...
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: "pin.slash").font(.system(size: 48, weight: .light)).foregroundColor(.secondary)
