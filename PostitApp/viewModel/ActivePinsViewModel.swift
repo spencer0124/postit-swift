@@ -11,26 +11,29 @@ class ActivePinsViewModel: ObservableObject {
     @Published var activePins: [Pin] = [] // 활성 핀 (In-Memory)
     @Published var isShowingEditor = false
     
-    // ⭐️ 2. modelContext를 저장할 프라이빗 변수
     private var modelContext: ModelContext?
     
-    // ⭐️ 3. setModelContext -> initialize (async)
-    // 앱 실행 시 DB와 시스템 LA 목록을 동기화(Reconcile)합니다.
+    // ⭐️ [문제 2 수정] HistoryViewModel 참조 추가
+    private var historyViewModel: HistoryViewModel?
+    
+    // ⭐️ [문제 2 수정] HistoryViewModel 주입 함수
+    func setHistoryViewModel(_ historyVM: HistoryViewModel) {
+        self.historyViewModel = historyVM
+    }
+    
+    // ⭐️ initialize (async)
     func initialize(modelContext: ModelContext) async {
+        // ... (내용 변경 없음) ...
         self.modelContext = modelContext
         
         print("ActivePinsVM: Initializing...")
         
-        // 1. 현재 시스템에 떠 있는 모든 LA 목록을 가져옴
         let systemLAs = Activity<PinActivityAttributes>.activities
         let systemLAIDs = Set(systemLAs.map { $0.id })
         print("ActivePinsVM: Found \(systemLAIDs.count) active LAs in system.")
 
-        // 2. DB에서 '활성 상태여야 하는' 핀 목록을 가져옴 (만료되지 않은 핀)
-        
-        // ⭐️ [오류 수정] #Predicate 매크로 밖에서 'now' 값을 캡처
         let now = Date.now
-        let predicate = #Predicate<Pin> { $0.showInHistoryAt > now } // 캡처한 'now' 변수 사용
+        let predicate = #Predicate<Pin> { $0.showInHistoryAt > now }
         
         let sort = SortDescriptor(\Pin.creationDate, order: .reverse)
         let descriptor = FetchDescriptor(predicate: predicate, sortBy: [sort])
@@ -43,33 +46,26 @@ class ActivePinsViewModel: ObservableObject {
         
         var reconciledActivePins: [Pin] = []
 
-        // 3. DB 핀 목록을 기준으로 시스템 LA와 대조
         for pin in dbActivePins {
-            // 3-1. DB에 activityID가 있고, 시스템 LA 목록에도 해당 ID가 존재하는가?
             guard let activityID = pin.activityID,
                   systemLAIDs.contains(activityID),
                   let activity = systemLAs.first(where: { $0.id == activityID })
             else {
-                // 3-2. (동기화) DB에는 '활성'이어야 한다고 되어있지만,
-                //      실제 LA가 없음 (앱이 꺼진 사이 만료/삭제됨)
                 print("ActivePinsVM: Reconciling pin \(pin.id). LA not found. Moving to history.")
-                pin.showInHistoryAt = .now // 보관함으로 이동
+                pin.showInHistoryAt = .now
                 pin.activityID = nil
-                continue // 활성 핀 목록에 추가하지 않음
+                continue
             }
             
-            // 3-3. (동기화) 유효한 LA를 찾음.
             print("ActivePinsVM: Reconciling pin \(pin.id). LA found. Restoring to dashboard.")
-            pin.associatedActivity = activity // (In-Memory) LA 연결
-            reconciledActivePins.append(pin) // (In-Memory) 활성 핀 배열에 추가
+            pin.associatedActivity = activity
+            reconciledActivePins.append(pin)
             
-            // 3-4. ⭐️ 이 LA의 종료 이벤트를 다시 감지 시작
             Task {
                 await listenForActivityEnd(activity: activity, pin: pin)
             }
         }
         
-        // 4. 동기화된 목록을 UI에 최종 반영
         self.activePins = reconciledActivePins
         print("ActivePinsVM: Initialization complete. \(reconciledActivePins.count) pins restored.")
     }
@@ -103,7 +99,7 @@ class ActivePinsViewModel: ObservableObject {
 
     // MARK: - Pin & Activity 관리 (addPin 함수 사용)
 
-    // Pin 추가 및 LA 시작 (변경 없음)
+    // Pin 추가 및 LA 시작 (⭐️ [문제 1 수정])
     @discardableResult
     func addPin(processedContent: ProcessedContent) async -> Activity<PinActivityAttributes>? {
         
@@ -112,24 +108,41 @@ class ActivePinsViewModel: ObservableObject {
             return nil
         }
         
+        // ⭐️ 6. [문제 1 수정] 중복 핀 로직
         if let existingPin = activePins.first(where: { $0.content == processedContent.originalContent }) {
             print("addPin: Duplicate pin found. Re-pinning (End old, Start new).")
             
+            // ⭐️ 6-1. [FIX] (In-Memory) 배열에서 *먼저* 제거
+            withAnimation {
+                activePins.removeAll { $0.id == existingPin.id }
+            }
+            
+            // 6-2. 기존 LA 종료 (await)
             await existingPin.associatedActivity?.end(nil, dismissalPolicy: .immediate)
             print("addPin: Successfully ended old activity \(existingPin.id)")
 
+            // 6-3. (DB) 기존 Pin 객체 데이터 업데이트
             existingPin.creationDate = .now
             existingPin.showInHistoryAt = .now.addingTimeInterval(8 * 60 * 60)
             existingPin.metadataTitle = processedContent.metadataTitle
             existingPin.metadataFaviconData = processedContent.metadataFaviconData
             
+            // 6-4. 새 LA 시작
             guard let activity = LiveActivityService.start(pin: existingPin, processedContent: processedContent) else {
                 print("addPin: LiveActivityService.start failed for re-pin.")
+                // 롤백: 제거했던 핀을 다시 배열에 돌려놓음 (안전 장치)
+                activePins.insert(existingPin, at: 0)
                 return nil
             }
             
+            // 6-5. (In-Memory) 새 Activity 연결
             existingPin.associatedActivity = activity
-            existingPin.activityID = activity.id
+            existingPin.activityID = activity.id // ⭐️ DB에 Activity ID 저장
+            
+            // ⭐️ 6-6. [FIX] (In-Memory) 배열 *맨 위에* 다시 추가
+            withAnimation {
+                activePins.insert(existingPin, at: 0)
+            }
             
             Task { await listenForActivityEnd(activity: activity, pin: existingPin) }
             
@@ -137,6 +150,7 @@ class ActivePinsViewModel: ObservableObject {
             return activity
         }
 
+        // --- 7. 신규 핀 추가 로직 (변경 없음) ---
         print("addPin: Creating new pin.")
         
         let newPin = Pin(
@@ -148,7 +162,7 @@ class ActivePinsViewModel: ObservableObject {
         )
         
         modelContext.insert(newPin)
-        activePins.insert(newPin, at: 0)
+        activePins.insert(newPin, at: 0) // ⭐️ 신규 추가는 기본으로 0번에 insert
         
         guard let activity = LiveActivityService.start(pin: newPin, processedContent: processedContent) else {
             print("addPin: LiveActivityService.start failed.")
@@ -220,24 +234,29 @@ class ActivePinsViewModel: ObservableObject {
         }
     }
 
-    // ⭐️ 9. [문제 1 수정] 앱 내부 핀 삭제 (async 함수로 변경)
-    func removePin(at offsets: IndexSet) async { // ⭐️ async
+    // ⭐️ 9. 앱 내부 핀 삭제 (수동) (⭐️ [문제 2 수정])
+    func removePin(at offsets: IndexSet) async { // async
         let pinsToRemove = offsets.compactMap { activePins[$0] }
         
-        // 9-1. (In-Memory) 배열에서 먼저 제거
-        activePins.remove(atOffsets: offsets)
+        // 9-1. (In-Memory) 배열에서 제거 (애니메이션 적용)
+        withAnimation(.spring()) {
+            activePins.remove(atOffsets: offsets)
+        }
         
         for pin in pinsToRemove {
-            // 9-2. ⭐️ (DB) "보여줄 시점"을 즉시로 업데이트
+            // 9-2. (DB) "보여줄 시점"을 즉시로 업데이트
             pin.showInHistoryAt = .now
             print("Pin \(pin.id) moved to history (showInHistoryAt set to now)")
             
-            // 9-3. ⭐️ LA 종료 (Task 래퍼 제거, 직접 await)
+            // 9-3. ⭐️ [FIX] HistoryViewModel에 새로고침 요청
+            historyViewModel?.fetchHistory()
+            
+            // 9-4. LA 종료 (직접 await)
             await pin.associatedActivity?.end(nil, dismissalPolicy: .immediate)
             print("Live Activity가 수동으로 종료되었습니다: \(pin.id)")
             
             pin.associatedActivity = nil
-            pin.activityID = nil // ⭐️ DB의 Activity ID 제거
+            pin.activityID = nil
         }
     }
     
@@ -250,18 +269,21 @@ class ActivePinsViewModel: ObservableObject {
         removePinFromApp(pin: pin)
     }
     
-    // ⭐️ 11. [문제 2 수정] LA 종료 시 앱 상태 정리 (DB에 보관함 이동 로직 추가)
+    // ⭐️ 11. LA 종료 시 앱 상태 정리 (⭐️ [문제 2 수정])
     @MainActor
     private func removePinFromApp(pin: Pin) {
         // (In-Memory) 활성 배열에서만 제거
         activePins.removeAll { $0.id == pin.id }
         
-        // ⭐️ (DB) [FIX] LA가 스와이프로 종료되어도 보관함에 즉시 표시되도록 시간 업데이트
+        // (DB) [FIX] LA가 스와이프로 종료되어도 보관함에 즉시 표시되도록 시간 업데이트
         pin.showInHistoryAt = .now
         print("Pin \(pin.id) moved to history (LA ended/dismissed)")
 
         pin.associatedActivity = nil
         pin.activityID = nil
+        
+        // ⭐️ [FIX] HistoryViewModel에 새로고침 요청
+        historyViewModel?.fetchHistory()
         
         print("앱 내부 데이터 정리 완료 (In-Memory + DB): \(pin.id)")
     }

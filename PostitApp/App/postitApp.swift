@@ -20,6 +20,11 @@ struct postitApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selectedTab: ContentView.Tab = .dashboard
 
+    // ⭐️ 3. VM 생성 시점 (init)에서 두 VM을 연결
+    init() {
+        viewModel.setHistoryViewModel(historyViewModel)
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView(selectedTab: $selectedTab)
@@ -51,7 +56,7 @@ struct postitApp: App {
                     }
                 }
         }
-        // ⭐️ 3. SwiftData ModelContainer 설정
+        // ⭐️ 4. SwiftData ModelContainer 설정
         .modelContainer(for: Pin.self)
     }
 
