@@ -12,44 +12,52 @@ struct Tab2View: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                // 3. ⭐️ ForEach 수정 -> HistoryPinListRow 사용
-                ForEach(viewModel.archivedPins) { pin in
-                    HistoryPinListRow(
-                        pin: pin,
-                        onRestore: {
-                            // "다시 핀하기" 로직
-                            Task {
-                                await activePinsViewModel.restorePin(pin)
-                                withAnimation {
-                                    selectedTab = .dashboard
+            // ⭐️ 3. List -> ScrollView로 변경
+            ScrollView {
+                VStack(spacing: 12) { // ⭐️ 카드 간 간격
+                    if viewModel.archivedPins.isEmpty {
+                        // ⭐️ 4. EmptyStateView 사용
+                        EmptyStateView()
+                            .padding(.top, 100)
+                    } else {
+                        ForEach(viewModel.archivedPins) { pin in
+                            HistoryPinListRow(
+                                pin: pin,
+                                onRestore: {
+                                    // "다시 핀하기" 로직
+                                    Task {
+                                        await activePinsViewModel.restorePin(pin)
+                                        withAnimation {
+                                            selectedTab = .dashboard
+                                        }
+                                    }
+                                },
+                                onDelete: {
+                                    // "영구 삭제" 로직
+                                    if let index = viewModel.archivedPins.firstIndex(where: { $0.id == pin.id }) {
+                                        viewModel.deleteFromHistory(at: IndexSet(integer: index))
+                                    }
                                 }
-                            }
-                        },
-                        onDelete: {
-                            // "영구 삭제" 로직
-                            if let index = viewModel.archivedPins.firstIndex(where: { $0.id == pin.id }) {
-                                viewModel.deleteFromHistory(at: IndexSet(integer: index))
-                            }
+                            )
                         }
-                    )
+                    }
                 }
-                // 4. ⭐️ 기존 .onDelete(perform:)는 버튼으로 대체되었으므로 제거
+                .padding(.horizontal, 16) // ⭐️ 카드 좌우 여백
+                .padding(.top, 12)        // ⭐️ 네비게이션 바 아래 여백
+                .padding(.bottom, 100)    // ⭐️ 플로팅 탭바를 위한 하단 여백
             }
-            .listStyle(.plain)
+            .background(Color.clear) // ⭐️ 배경색은 ContentView가 관리
             .navigationTitle("보관함")
-            .overlay {
-                if viewModel.archivedPins.isEmpty {
-                    Text("보관된 기록이 없습니다.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
+            .navigationBarTitleDisplayMode(.inline) // ⭐️ 인라인 타이틀
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    // "모두 지우기" 버튼 (변경 없음)
-                    Button("모두 지우기", role: .destructive) {
+                    // ⭐️ 5. "모두 지우기" 버튼 스타일 변경
+                    Button {
                         viewModel.clearAllHistory()
+                    } label: {
+                        Image(systemName: "trash.circle.fill")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundColor(.red)
                     }
                     .disabled(viewModel.archivedPins.isEmpty)
                 }
@@ -62,40 +70,63 @@ struct Tab2View: View {
     }
 }
 
-// MARK: - ⭐️ 5. HistoryPinListRow 헬퍼 뷰 추가 ⭐️
+// MARK: - ⭐️ 6. HistoryPinListRow (카드 스타일 적용)
 private struct HistoryPinListRow: View {
     let pin: Pin
     var onRestore: () -> Void
     var onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 15) { // 버튼 간 간격 추가
-            // 5-1. 핀 콘텐츠 (PinRowView 재사용)
+        HStack(spacing: 15) {
+            // 6-1. 핀 콘텐츠 (PinRowView 재사용)
             PinRowView(pin: pin)
             
             Spacer()
 
-            // 5-2. "다시 핀하기" 버튼 (Tab1View 스타일 참조)
+            // 6-2. "다시 핀하기" 버튼
             Button(action: {
                 withAnimation(.spring()) { onRestore() }
             }) {
-                Image(systemName: "pin.fill") // "pin.fill" 아이콘 사용
+                Image(systemName: "pin.circle.fill") // ⭐️ 아이콘 변경
                     .font(.title2)
-                    .foregroundColor(.blue) // 파란색
+                    .foregroundColor(.blue)
             }
             .buttonStyle(.plain)
 
-            // 5-3. "영구 삭제" 버튼 (Tab1View 스타일 참조)
+            // 6-3. "영구 삭제" 버튼
             Button(action: {
                 withAnimation(.spring()) { onDelete() }
             }) {
-                Image(systemName: "trash.fill") // "trash.fill" 아이콘 사용
+                Image(systemName: "trash.circle.fill") // ⭐️ 아이콘 변경
                     .font(.title2)
-                    .foregroundColor(.red) // 빨간색
+                    .foregroundColor(.red)
             }
             .buttonStyle(.plain)
         }
-        .padding(.vertical, 5) // 기존 List Row의 패딩 유지
+        .padding(16) // ⭐️ 카드 내부 패딩
+        .background(Color(uiColor: .systemBackground)) // ⭐️ 흰색 카드 배경
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous)) // ⭐️ 둥근 모서리
+        .shadow(color: .black.opacity(0.06), radius: 8, x: 0, y: 2) // ⭐️ 은은한 그림자
+    }
+}
+
+// MARK: - ⭐️ 7. EmptyStateView 헬퍼 뷰 추가
+private struct EmptyStateView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "archivebox")
+                .font(.system(size: 40, weight: .medium))
+                .foregroundColor(Color(uiColor: .systemGray3))
+            
+            Text("보관된 핀이 없어요")
+                .font(.title2.weight(.bold))
+            
+            Text("대시보드에서 핀을 삭제하거나\n핀이 만료되면 이곳에 보관됩니다.")
+                .font(.callout)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(.bottom, 60)
     }
 }
 
